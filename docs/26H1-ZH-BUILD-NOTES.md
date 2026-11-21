@@ -304,3 +304,41 @@ App 内所有可见文本——启动遮罩、Studio 工具栏、笔记本键盘
 三个选项本身用双语标注（跟随系统 / Auto、简体中文 / Chinese、English / 英文），任何界面语言下都能识别。偏好持久化，下次启动沿用。
 
 > 最终 IPA：`WindowsIOS_交付_26H1/WindowsiOS.ipa`（含高分辨率 + 双语），已同步推送到 LiveContainer 文档目录，覆盖同名旧文件。
+
+---
+
+## 六、Release 交付产物（2026-11-21）
+
+编译产物**不进 git**（`.gitignore` 忽略 `*.ipa` / `*.fd` / `*.hvsparse`），统一发布在 GitHub Release：
+
+**https://github.com/shaliuxin/WindowsiOS/releases/tag/v26H1-zh-hires**（tag `v26H1-zh-hires`，指向 `main @ 40d82d6`）
+
+| 文件 | 大小 | 说明 |
+|---|---|---|
+| `WindowsiOS.ipa` | 596 KB | 最终版 App（中英双语 + 可切换高分辨率），未签名 |
+| `code.fd` | 64 MB | 高分辨率 EDK2 固件（SiliconWin patched `QemuRamfbDxe`） |
+| `code_800x600_original.fd` | 64 MB | 原版 800×600 固件，回滚用 |
+| `vars.fd` | 64 MB | UEFI NVRAM（与 5.3 节 Mac 端 1920×1080 验证同一份） |
+| `WindowsiOS_legacy_zh.ipa` | 536 KB | 上一版中文 IPA，回滚用 |
+| `windows11.hvsparse.part00` … `part13` | 合计 19,762,451,824 B | 100 GB 稀疏镜像，14 片 × 1400 MiB |
+| `SHA256SUMS` | — | 全部文件（含合并后的原镜像）的校验和 |
+
+### 为什么必须分片
+
+GitHub Release **单个 asset 硬上限 2 GB**，而 `windows11.hvsparse` 是 18.41 GiB。按**原始格式**切成 14 片（每片 1400 MiB，`split -b 1400m -d -a 2`）：App 的自动解包逻辑要求原始 `HVSPARSE` 文件，压缩虽能把体积降到约 36%，但会额外要求用户解压，且改变交付形态，因此不采用。
+
+> 上传实现备忘：`curl --data-binary @file` 会把整个文件读进内存，1.3 GiB 分片直接 OOM。改用 `http.client` 流式 `POST`（手工设置 `Content-Length`，逐 4 MiB 块 `conn.send()`），带重试与「跳过已存在 asset」的断点续传，脚本逻辑见 `/tmp/winios_upload_parts.py`（一次性工具，未入库）。
+
+### 下载后还原
+
+```bash
+# 下载全部 14 个分片后
+cat windows11.hvsparse.part* > windows11.hvsparse
+shasum -a 256 -c SHA256SUMS        # Linux: sha256sum -c SHA256SUMS
+```
+
+把 `windows11.hvsparse`、`code.fd`、`vars.fd` 一起放入 App 容器 `Documents/Machines/Win11/`；当 `windows11.img` 为 0 字节或不存在时，App 会自动解包为 100 GB。若换回 `code_800x600_original.fd`，固件不认识 `opt/siliconwin/resolution` 会回落默认模式，不会启动失败（见 5.5 节向后兼容说明）。
+
+### 侧载注意
+
+在 LiveContainer 里用**「替换 / 更新」**导入 IPA，**不要卸载旧的 Windows 11**（卸载会清空容器里的 18 GB 镜像与固件）；覆盖安装后 JIT 失效，需重新点「启用 JIT」经 StikDebug 获取。
