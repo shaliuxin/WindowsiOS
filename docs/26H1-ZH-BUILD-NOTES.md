@@ -320,6 +320,7 @@ App 内所有可见文本——启动遮罩、Studio 工具栏、笔记本键盘
 | `code_800x600_original.fd` | 64 MB | 原版 800×600 固件，回滚用 |
 | `vars.fd` | 64 MB | UEFI NVRAM（与 5.3 节 Mac 端 1920×1080 验证同一份） |
 | `WindowsiOS_legacy_zh.ipa` | 536 KB | 上一版中文 IPA，回滚用 |
+| `StikDebug-3.2.2.ipa` | 16.9 MB | 免电脑授予 TXM JIT 的宿主工具（基于上游 3.2.2 重新打包，见下） |
 | `windows11.hvsparse.zst.part00` … `part05` | 合计 8,701,255,261 B | 镜像 zstd 压缩包（8.10 GiB）再切 6 片 × 1400 MiB |
 | `SHA256SUMS` | — | 全部文件（含合并后的 `.zst` 与解压后的原镜像）的校验和 |
 
@@ -345,6 +346,23 @@ zstd -d windows11.hvsparse.zst      # 得到 19,762,451,824 B 的 windows11.hvsp
 
 把 `windows11.hvsparse`、`code.fd`、`vars.fd` 一起放入 App 容器 `Documents/Machines/Win11/`；当 `windows11.img` 为 0 字节或不存在时，App 会自动解包为 100 GB。若换回 `code_800x600_original.fd`，固件不认识 `opt/siliconwin/resolution` 会回落默认模式，不会启动失败（见 5.5 节向后兼容说明）。
 
+### StikDebug 重新打包说明
+
+`StikDebug-3.2.2.ipa` 基于上游 StikDebug 3.2.2（bundle id `com.stik.stikdebug`，原始分发 [stikdebug.xyz](https://stikdebug.xyz)）重新打包，相对上游的改动：
+
+- **注册 `stikdebug://` URL scheme**（上游只有 `stikjit://`）—— WindowsiOS 用 `stikdebug://enable-jit?bundle-id=…&pid=…&script-data=…` 唤起，旧 scheme 在 3.2.2 上不生效，这是「点启用 JIT 没反应」的根因；
+- 状态文本中文化（`Idle` → `空闲`、`Waiting for TXM JIT…` → `等待 TXM JIT（请用 StikDebug 附加）` 等）；
+- 未签名；版权归上游作者，本仓库仅作同版本兼容性重新打包，遵循上游许可证。
+
+工作方式：WindowsiOS 发起 URL 请求后，StikDebug 用 `BRK #0x69` 探测 / `BRK #0xF00D` 为目标进程分配并「祝福」384 MiB RX 内存，JIT 即可脱离电脑使用。
+
 ### 侧载注意
 
-在 LiveContainer 里用**「替换 / 更新」**导入 IPA，**不要卸载旧的 Windows 11**（卸载会清空容器里的 18 GB 镜像与固件）；覆盖安装后 JIT 失效，需重新点「启用 JIT」经 StikDebug 获取。
+安装顺序：
+
+1. 先侧载 `StikDebug-3.2.2.ipa`（LiveContainer / AltStore / TrollStore 均可）；
+2. 再侧载 `WindowsiOS.ipa` —— 在 LiveContainer 里用**「替换 / 更新」**导入，**不要卸载旧的 Windows 11**（卸载会清空容器里的 18 GB 镜像与固件）；
+3. 打开 WindowsiOS，点「启用 JIT」，StikDebug 接管并授予 JIT；
+4. 回到 App 点「启动 Windows 11」。
+
+覆盖安装后 JIT 必然失效，每次更新 App 都要重新执行第 3 步。
