@@ -6,6 +6,8 @@ struct SessionView: View {
     @ObservedObject var vm: VMViewModel
     @EnvironmentObject var loc: LocalizationManager
     private let uiHaptic = UIImpactFeedbackGenerator(style: .light)
+    @State private var showResolutionHint = false
+    @State private var resolutionHintToken = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -42,9 +44,62 @@ struct SessionView: View {
                         )
                         .frame(maxHeight: .infinity, alignment: laptopActive ? .top : .center)
                 }
+
+                // 分辨率改动提示（运行时也能看到；改动只在下次创建 VM 时生效）
+                if showResolutionHint {
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 9) {
+                            Image(systemName: "display")
+                                .font(.system(size: 13, weight: .medium))
+                            Text(L("已设为 \(vm.resolutionPreset.displayName)，在 Windows 内关机后重新启动虚拟机生效",
+                                   "Set to \(vm.resolutionPreset.displayName); shut down Windows and boot again to apply"))
+                                .font(.system(size: 11.5, weight: .medium))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .fill(Color(red: 0.06, green: 0.09, blue: 0.16).opacity(0.96))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .strokeBorder(Color(red: 0.72, green: 0.82, blue: 1.0).opacity(0.35), lineWidth: 0.8)
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 26)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(20)
+                    .allowsHitTesting(false)
+                }
             }
             .onChange(of: size) { _, newSize in
                 WinIOSBridge.shared.updateScreenSize(newSize, scale: UIScreen.main.scale)
+            }
+            // 兜底入口：笔记本折叠模式（无工具栏）或工具栏被收起时，VM 运行中依然能改分辨率
+            .overlay(alignment: .topLeading) {
+                if vm.isVMRunning && (laptopActive || !vm.controlBarVisible) {
+                    Menu {
+                        resolutionMenuContent()
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "display")
+                                .font(.system(size: 11, weight: .medium))
+                            Text(vm.resolutionPreset.rawValue)
+                                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        }
+                        .foregroundStyle(.white.opacity(0.94))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(Color.black.opacity(0.58)))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.24), lineWidth: 0.6))
+                    }
+                    .padding(.leading, 14)
+                    .padding(.top, geo.safeAreaInsets.top + 12)
+                }
             }
             .sheet(item: $vm.activeSafariURL) { item in
                 SafariSheet(url: item.url)
@@ -56,6 +111,19 @@ struct SessionView: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .defersSystemGestures(on: .all)
+        .onChange(of: vm.resolutionPreset) { _, _ in
+            resolutionHintToken += 1
+            let token = resolutionHintToken
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+                showResolutionHint = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
+                guard resolutionHintToken == token else { return }
+                withAnimation(.easeOut(duration: 0.30)) {
+                    showResolutionHint = false
+                }
+            }
+        }
     }
 
     // MARK: - 1. Sleek Midnight-Sapphire Surface Laptop Ultra Clamshell Mode (Folded)
@@ -454,6 +522,23 @@ struct SessionView: View {
                 }
                 .buttonStyle(.plain)
 
+                // 分辨率入口：虚拟机运行时也能查看 / 修改（放在工具栏最前，避免被横向滚动藏起来）
+                Menu {
+                    resolutionMenuContent()
+                } label: {
+                    HStack(spacing: 4.5) {
+                        Image(systemName: "display")
+                            .font(.system(size: 11.5, weight: .medium))
+                        Text(vm.resolutionPreset.rawValue)
+                            .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                    }
+                    .foregroundStyle(Color(red: 0.92, green: 0.95, blue: 1.0))
+                    .padding(.horizontal, 10.5)
+                    .padding(.vertical, 6.5)
+                    .background(Capsule().fill(Color.white.opacity(0.07)))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
+                }
+
                 studioPillItem(icon: "laptopcomputer", label: L("笔记本", "Laptop")) {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                         vm.postureMode = .laptop
@@ -638,16 +723,7 @@ struct SessionView: View {
                 // 显示分辨率选择：写入 HV_RESOLUTION，由高分辨率固件在下次启动时生效
                 VStack(spacing: 6) {
                     Menu {
-                        Section(L("常用", "Common")) {
-                            ForEach(GuestResolution.allCases.filter(\.isRecommended)) { res in
-                                resolutionMenuItem(res)
-                            }
-                        }
-                        Section(L("更多分辨率", "More resolutions")) {
-                            ForEach(GuestResolution.allCases.filter { !$0.isRecommended }) { res in
-                                resolutionMenuItem(res)
-                            }
-                        }
+                        resolutionMenuContent()
                     } label: {
                         HStack(spacing: 7) {
                             Image(systemName: "display")
@@ -755,6 +831,26 @@ struct SessionView: View {
                 )
         )
         .shadow(color: .black.opacity(0.70), radius: 24, x: 0, y: 10)
+    }
+
+    /// 分辨率菜单内容：启动遮罩与运行时工具栏共用同一份。
+    @ViewBuilder
+    private func resolutionMenuContent() -> some View {
+        Section(L("常用", "Common")) {
+            ForEach(GuestResolution.allCases.filter(\.isRecommended)) { res in
+                resolutionMenuItem(res)
+            }
+        }
+        Section(L("更多分辨率", "More resolutions")) {
+            ForEach(GuestResolution.allCases.filter { !$0.isRecommended }) { res in
+                resolutionMenuItem(res)
+            }
+        }
+        Section {
+            Text(L("改档位后需在 Windows 内关机，再回到本页重新启动虚拟机才会生效。",
+                   "Shut down Windows and boot the VM again for the new mode to take effect."))
+                .font(.footnote)
+        }
     }
 
     @ViewBuilder
