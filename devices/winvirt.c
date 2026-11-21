@@ -186,6 +186,27 @@ int hv_winvirt_create(HvWinVirt *b, HvMachine *m, HvCpu *cpu, int ncpus, uint64_
 
     b->fw_cfg = hv_fw_cfg_create(m, WINVIRT_FW_CFG_PA, (uint16_t)ncpus);
     b->fb = hv_fb_display_create(m, b->fw_cfg);
+    /* Optional host-requested GOP resolution for high-resolution EDK2 ramfb.
+     * The patched QemuRamfbDxe reads "opt/siliconwin/resolution" as "<w>x<h>"
+     * and sets PcdVideo*Resolution so Windows inherits that mode. Validate
+     * conservatively here; the firmware validates again before using it. */
+    {
+        const char *res = getenv("HV_RESOLUTION");
+        if (res && *res) {
+            char buf[16];
+            size_t n = strnlen(res, sizeof buf - 1);
+            unsigned w = 0, h = 0;
+            if (n >= 7 && n < sizeof buf && sscanf(res, "%ux%u", &w, &h) == 2 &&
+                w >= 640 && w <= 5120 && h >= 480 && h <= 2880) {
+                memcpy(buf, res, n);
+                buf[n] = '\0';
+                hv_fw_cfg_add_file(b->fw_cfg, "opt/siliconwin/resolution", buf, (uint32_t)n);
+                fprintf(stderr, "winvm: requested GOP resolution %ux%u\n", w, h);
+            } else {
+                fprintf(stderr, "winvm: ignoring invalid HV_RESOLUTION='%s'\n", res);
+            }
+        }
+    }
     hv_acpi_build_and_register(b->fw_cfg, b->ncpus, ram_size, 0, 0);
 
     /* 7. PCIe Root Complex (GPEX):

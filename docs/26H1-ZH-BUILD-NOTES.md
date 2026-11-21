@@ -167,3 +167,57 @@ docs/26H1-ZH-BUILD-NOTES.md   (本文)
 ```
 
 其中 scripts 的改动还包括：设备 UDID / Bundle ID 更新为实机值、LLDB 附加改为轮询寄存器（避免 CoreDevice 上 `SBListener.WaitForEvent` 挂起触发 iOS watchdog）、`WIM_PRO_INDEX` / `WIN_INDEX` 拆分、`GUEST_RAM_MB` 可配、EFI 文件从解包后的 ISO 根目录复制而非 wimlib extract。
+
+---
+
+## 五、高分辨率显示（800×600 → 1920×1080）
+
+### 5.1 为什么 Windows 里改不了分辨率
+
+这是三份可验证来源共同说明的机制：
+
+- 标准 EDK2 `QemuRamfbDxe` 只提供 640×480、800×600、1024×768 三种 GOP 模式（SiliconWin "ARCHITECTURE.md"）；
+- 默认 800×600 来自 EDK2 的两个动态 PCD：`PcdVideoHorizontalResolution|800`、`PcdVideoVerticalResolution|600`（Hoffmann "ArmVirtPkg: change qemu default resolution to 1280x800"）；
+- Windows on Arm 没有 ramfb 原生驱动，会继承固件设置的 GOP 模式，所以进系统后在显示设置里改无效（SiliconWin "ARCHITECTURE.md"；Ersek "Re: [Qemu-devel] [RfC PATCH] vga: wire up -g switch"）。
+
+本项目的 `devices/fb_display.c` 本身接受 64×64 到 8192×8192 的配置，限制完全在固件端。
+
+### 5.2 采用的方案
+
+移植 SiliconWin 的补丁版 `QemuRamfbDxe`（源码来自 OathWallet/SiliconWin，BSD-2-Clause-Patent）：
+
+- 提供 18 种模式，从 640×480 到 3840×2160；
+- 读取 fw_cfg 文件 `opt/siliconwin/resolution`（格式 `"<宽>x<高>"`，上限 5120×2880）作为自定义模式；
+- 通过 `PcdSet32S(PcdVideoHorizontalResolution/VerticalResolution, ...)` 让控制台和 OS loader 保持该模式。
+
+本项目的对应改动：
+
+- `firmware/QemuRamfb.c`、`firmware/QemuRamfbDxe.inf`、`firmware/hires-edk2.config`：补丁驱动与 EDK2 构建配置；
+- `scripts/build-hires-firmware.sh`：一键构建（QEMU 源码树 → BaseTools → iasl → 固件），产物 `work/firmware-build/hires-code.fd`；
+- `devices/winvirt.c`：创建 fw_cfg 后读取环境变量 `HV_RESOLUTION`（如 `1920x1080`），校验范围后写入 `opt/siliconwin/resolution`。host 和 iOS 两端无需改接口。
+
+### 5.3 实机验证结果（2026-11-21，Mac QEMU 11.1.3 + hvf）
+
+| 组合 | 输出分辨率 |
+|---|---|
+| Homebrew 原版 `edk2-aarch64-code.fd` | 800×600 |
+| 定制固件，未指定 HV_RESOLUTION | 1280×800（QEMU 11.1.2 自带 edk2 的默认 PCD） |
+| 定制固件 + `HV_RESOLUTION=1920x1080` | 1920×1080 |
+
+用 26H1 中文镜像 + 定制固件 + `HV_RESOLUTION=1920x1080` 启动后，截图确认进入中文桌面（任务栏、图标、壁纸正常），无回归。日志确认 `winvm: requested GOP resolution 1920x1080` 与 `winvm: ramfb configured 1920x1080 stride=7680`。
+
+### 5.4 使用方式
+
+```bash
+# 首次构建（需 Homebrew llvm/lld；脚本会自动下载 QEMU 源码并编译 iasl）
+./scripts/build-hires-firmware.sh
+
+# 启动
+HV_RESOLUTION=1920x1080 ./build/winvm \
+  --code work/firmware-build/hires-code.fd \
+  --vars work/vars.fd --disk work/windows11.img --ram 6144
+```
+
+范围限制：宽 640–5120，高 480–2880。固件自身会再校验一次；无效值被忽略并回退默认模式。
+
+**尚未验证**：iPhone 端。固件已在 Mac QEMU 上通过回归测试，但手机端需要把 `hires-code.fd` 传进 App 容器替换 `code.fd`，并在 App 内设置 `HV_RESOLUTION`（目前 App 没有暴露该设置的 UI）。这一步需在真机上测试后确认。
