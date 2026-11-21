@@ -14,6 +14,10 @@
 
 ---
 
+> **🇨🇳 中文说明**：本项目已完成 **Windows 11 26H1 ARM64 中文版**镜像构建（Build 28000，不精简、全驱动、100 GB、中文桌面）与 **App 界面汉化**，并打通了基于 StikDebug 的**纯手机端免电脑启动**。完整构建记录、踩坑与知识总结见 [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md)。
+
+---
+
 ## Visual Showcase
 
 <table>
@@ -226,6 +230,8 @@ make -j8 all ios-lib test-core
 # Pack into fast zero-skipping sparse container for iOS transfer -> work/windows11.hvsparse
 ./build/hvsparse pack work/windows11_lite.img work/windows11.hvsparse
 ```
+
+> For the **26H1 zh-cn full (non-featherweight) image** with all VirtIO drivers and the Chinese UI, plus on-device StikDebug JIT setup, see [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md).
 
 ### 3. Run Locally on macOS (`build/winvm`)
 ```bash

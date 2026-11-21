@@ -78,7 +78,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _vmStatus = @"Idle";
+        _vmStatus = @"空闲";
         _metricsLock = OS_UNFAIR_LOCK_INIT;
         _screenSizePts = CGSizeZero;
         _screenScale = 3.0;
@@ -292,7 +292,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
 - (void)updateUnpackProgress:(double)frac {
     _unpackProgress = frac;
-    _vmStatus = [NSString stringWithFormat:@"Unpacking Windows 11 NVMe image (%.0f%%)...", frac * 100.0];
+    _vmStatus = [NSString stringWithFormat:@"正在解压 Windows 11 镜像 (%.0f%%)...", frac * 100.0];
     dispatch_async(_diagQueue, ^{
         [self writeDiagnosticsSnapshot];
     });
@@ -313,7 +313,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     if (!self.isJITLive) {
         [self tryAcquireJIT:YES];
         if (!self.isJITLive) {
-            _vmStatus = @"Waiting for TXM JIT (attach StikDebug or launch_on_duo.sh)";
+            _vmStatus = @"等待 TXM JIT（请用 StikDebug 附加）";
             dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
             [self notifyChanged];
             return;
@@ -321,7 +321,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     }
 
     if (![self hasProvisionedMachine]) {
-        _vmStatus = @"Place code.fd, vars.fd, and windows11.hvsparse in Documents/Machines/Win11";
+        _vmStatus = @"请将 code.fd、vars.fd 和 windows11.hvsparse 放入 Documents/Machines/Win11";
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
         return;
@@ -331,7 +331,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     if ([self needsSparseUnpack]) {
         _unpacking = YES;
         _unpackProgress = 0.0;
-        _vmStatus = @"Unpacking Windows 11 NVMe image (0%)...";
+        _vmStatus = @"正在解压 Windows 11 镜像 (0%)...";
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
 
@@ -354,7 +354,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
                     [self startConfiguredVMInDirectory:dir];
                 } else {
                     unlink(tmpDst.fileSystemRepresentation);
-                    self->_vmStatus = @"Error: failed to unpack windows11.hvsparse";
+                    self->_vmStatus = @"错误：解压 windows11.hvsparse 失败";
                     dispatch_async(self->_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
                     [self notifyChanged];
                 }
@@ -372,7 +372,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
     WinIosDualMapping jit = winios_jit_mapping();
     if (!jit.rx_addr || !jit.rw_addr) {
-        _vmStatus = @"Error: JIT region missing";
+        _vmStatus = @"错误：JIT 内存区域缺失";
         [self notifyChanged];
         return;
     }
@@ -428,7 +428,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
     char err[256] = {0};
     if (hv_winvm_create(&cfg, err, sizeof err) != 0) {
-        _vmStatus = [NSString stringWithFormat:@"VM create failed: %s", err];
+        _vmStatus = [NSString stringWithFormat:@"虚拟机创建失败：%s", err];
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
         return;
@@ -445,7 +445,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     _lastMachTicks = mach_absolute_time();
     _lastWfiTicks = 0;
     _lastWfiIdlePct = 0.0;
-    _vmStatus = [NSString stringWithFormat:@"Running Windows 11 ARM64 (%d vCPUs, %llu MB RAM)", _configuredCPUs, _configuredRamMB];
+    _vmStatus = [NSString stringWithFormat:@"正在运行 Windows 11 ARM64（%d 核 CPU，%llu MB 内存）", _configuredCPUs, _configuredRamMB];
     [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
 
     hv_winvm_start(1, vm_exit_trampoline);
@@ -586,7 +586,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     _vmRunning = NO;
     [self stopDiagTimer];
     [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
-    _vmStatus = [NSString stringWithFormat:@"Stopped (%@)", reason];
+    _vmStatus = [NSString stringWithFormat:@"已停止（%@）", reason];
     dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
     [self notifyChanged];
 }

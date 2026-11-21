@@ -85,7 +85,7 @@ static WinIosDualMapping g_mapping;
 static void *g_guest_ram;
 static uint64_t g_guest_ram_bytes;
 static atomic_bool g_jit_live;
-static char g_status[256] = "Not initialized";
+static char g_status[256] = "尚未初始化";
 
 static void prealloc_ledger_exempt_ram(void) {
     if (g_guest_ram) return;
@@ -139,7 +139,7 @@ void winios_jit_install_trap_handler(void) {
     sigemptyset(&sa.sa_mask);
     sigaction(SIGTRAP, &sa, &g_prev_sigtrap);
     sigaction(SIGBUS, &sa, &g_prev_sigbus);
-    set_status("Trap guard ready");
+    set_status("陷阱保护已就绪");
     WINIOS_LOG("trap guard installed");
 }
 
@@ -204,7 +204,7 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
     bytes = (bytes + 0x3fffu) & ~(size_t)0x3fffu;
 
     if (!winios_jit_is_debugger_attached()) {
-        set_status("Waiting for debugger (StikDebug or LLDB)");
+        set_status("等待调试器（StikDebug）");
         WINIOS_LOG("acquire: CS_DEBUGGED not set yet");
         return false;
     }
@@ -231,14 +231,14 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
                     if (jit_selftest(&m)) {
                         g_mapping = m;
                         atomic_store(&g_jit_live, true);
-                        set_status("Live (%zu MiB plain RX/RW)", bytes >> 20);
+                        set_status("已就绪（%zu MiB 普通 RX/RW）", bytes >> 20);
                         return true;
                     }
                 }
                 munmap(rx, bytes);
             }
         }
-        set_status("Debugger attached, waiting for brk trap handler");
+        set_status("调试器已附加，等待断点处理");
         WINIOS_LOG("probe returned 0 (debugger did not answer brk #0x69)");
         return false;
     }
@@ -256,13 +256,13 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
     }
 
     if (!rx) {
-        set_status("Failed: debugger returned NULL RX region");
+        set_status("失败：调试器返回空 RX 区域");
         return false;
     }
     if ((uint64_t)(uintptr_t)rx + bytes > WINIOS_JIT_LOW_LIMIT) {
         WINIOS_LOG("RX region %p above %#llx limit; releasing", rx, WINIOS_JIT_LOW_LIMIT);
         vm_deallocate(mach_task_self(), (vm_address_t)rx, bytes);
-        set_status("Failed: RX allocated above low limit (relaunch app)");
+        set_status("失败：RX 分配超出低位限制（请重启 App）");
         return false;
     }
 
@@ -286,14 +286,14 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
                       mach_task_self(), (vm_address_t)rx, FALSE, &cur_prot, &max_prot, VM_INHERIT_NONE);
     }
     if (kr != KERN_SUCCESS) {
-        set_status("Failed: vm_remap (%s)", mach_error_string(kr));
+        set_status("失败：vm_remap（%s）", mach_error_string(kr));
         vm_deallocate(mach_task_self(), (vm_address_t)rx, bytes);
         return false;
     }
 
     kr = vm_protect(mach_task_self(), rw, (vm_size_t)bytes, FALSE, VM_PROT_READ | VM_PROT_WRITE);
     if (kr != KERN_SUCCESS) {
-        set_status("Failed: vm_protect RW (%s)", mach_error_string(kr));
+        set_status("失败：vm_protect RW（%s）", mach_error_string(kr));
         vm_deallocate(mach_task_self(), rw, bytes);
         vm_deallocate(mach_task_self(), (vm_address_t)rx, bytes);
         return false;
@@ -301,7 +301,7 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
 
     WinIosDualMapping m = {(uint8_t *)rw, (uint8_t *)rx, bytes};
     if (!jit_selftest(&m)) {
-        set_status("Failed: TXM selftest rejected RX execution");
+        set_status("失败：TXM 自检拒绝 RX 执行");
         vm_deallocate(mach_task_self(), rw, bytes);
         vm_deallocate(mach_task_self(), (vm_address_t)rx, bytes);
         return false;
@@ -320,7 +320,7 @@ bool winios_jit_acquire(size_t bytes, bool detach_after) {
         g_expecting_jit_trap = false;
     }
 
-    set_status("Live (%zu MiB TXM JIT, %llu MiB RAM)", bytes >> 20,
+    set_status("已就绪（%zu MiB TXM JIT，%llu MiB 内存）", bytes >> 20,
                (unsigned long long)(g_guest_ram_bytes >> 20));
     return true;
 }

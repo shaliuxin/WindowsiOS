@@ -457,7 +457,7 @@ struct LaptopDeckView: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: "keyboard")
                                         .font(.system(size: 10, weight: .medium))
-                                    Text("Split")
+                                    Text("分屏")
                                         .font(.system(size: 10, weight: .medium))
                                 }
                                 .foregroundStyle(.white.opacity(0.72))

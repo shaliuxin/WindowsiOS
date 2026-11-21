@@ -25,12 +25,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WORK = ROOT / "work"
 ESD = WORK / "downloads" / "Win11_24H2_ARM64_en-us.esd"
+ISO_ROOT = WORK / "downloads" / "iso_root"
 WINVM = ROOT / "build" / "winvm"
 CODE_FD = WORK / "code.fd"
 SRC_IMG = WORK / "windows11.img"
 LITE_IMG = WORK / "windows11_lite.img"
 PE_IMG = WORK / "_opt_pe.img"
 PE_VARS = WORK / "_opt_pe_vars.fd"
+WINPESHL_INI = '[LaunchApps]\r\n"X:\\Windows\\System32\\cmd.exe", "/c X:\\Windows\\System32\\startnet.cmd"\r\n'
 
 OPT_SYS_REG = r"""Windows Registry Editor Version 5.00
 
@@ -447,7 +449,13 @@ def build_opt_winpe():
         stage = WORK / "_stage_opt_pe"
         shutil.rmtree(stage, ignore_errors=True)
         stage.mkdir(parents=True, exist_ok=True)
-        run(["/opt/homebrew/bin/wimlib-imagex", "extract", ESD, "1", "/efi", "/boot", "/bootmgr.efi", f"--dest-dir={stage}"])
+        for name in ("efi", "boot", "bootmgr.efi"):
+            src = ISO_ROOT / name
+            dst = stage / name
+            if src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
         for item in stage.iterdir():
             dest = pe_root / item.name
             if item.is_dir():
@@ -457,10 +465,16 @@ def build_opt_winpe():
 
         boot_wim = pe_root / "sources" / "boot.wim"
         boot_wim.parent.mkdir(parents=True, exist_ok=True)
-        run(["/opt/homebrew/bin/wimlib-imagex", "export", ESD, "2", boot_wim, "--compress=none", "--boot"])
+        boot_wim.unlink(missing_ok=True)
+        run([
+            "/opt/homebrew/bin/wimlib-imagex", "export",
+            ISO_ROOT / "sources" / "boot.wim", "1", boot_wim,
+            "--compress=none", "--boot",
+        ])
 
         files = {
             "startnet.cmd": STARTNET_CMD,
+            "winpeshl.ini": WINPESHL_INI,
             "opt_sys.reg": OPT_SYS_REG,
             "opt_soft.reg": OPT_SOFT_REG,
             "opt_usr.reg": make_user_reg("OFFUSR"),

@@ -98,20 +98,18 @@ def txm_jit_cmd(debugger, command, exe_ctx, result, internal_dict):
         raise RuntimeError("No valid attached process in LLDB")
     print(f"[txm-jit] Attached to PID {process.GetProcessID()} (state={process.GetState()})", flush=True)
 
-    # Wait for initial --start-stopped attach stop to settle with valid thread registers before Continue()
-    listener = debugger.GetListener()
-    ev = lldb.SBEvent()
+    # Poll briefly for a valid thread/pc. Do not block in SBListener.WaitForEvent:
+    # on CoreDevice it can hang, and delaying Continue can trip the iOS watchdog.
     t_wait = time.time()
-    while time.time() - t_wait < 10.0:
+    while time.time() - t_wait < 5.0:
         if process.GetState() == lldb.eStateStopped and process.GetNumThreads() > 0:
-            t0_pc = process.GetThreadAtIndex(0).GetFrameAtIndex(0).FindRegister("pc").GetValueAsUnsigned()
+            thread0 = process.GetThreadAtIndex(0)
+            frame0 = thread0.GetFrameAtIndex(0) if thread0 else None
+            t0_pc = frame0.FindRegister("pc").GetValueAsUnsigned() if frame0 else 0
             if t0_pc != 0:
                 print(f"[txm-jit] Initial attach settled: state=Stopped, threads={process.GetNumThreads()}, pc={t0_pc:#x}", flush=True)
                 break
-        if listener.WaitForEvent(1, ev):
-            pass
-        else:
-            time.sleep(0.05)
+        time.sleep(0.05)
 
     detached = False
     for step in range(1, 64):

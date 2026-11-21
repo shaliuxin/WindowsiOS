@@ -19,8 +19,8 @@ WINVM = ROOT / "build" / "winvm"
 HVSPARSE = ROOT / "build" / "hvsparse"
 LAUNCH_DUO = ROOT / "scripts" / "launch_on_duo.sh"
 
-UDID = "00008160-000E05D036C0000A"
-BUNDLE_ID = "me.ammaar.windowsios"
+UDID = "00008160-000A70EC21E00036"
+BUNDLE_ID = "me.ammaar.windowsios.83K872NSAG"
 
 CODE_FD = WORK / "code.fd"
 VARS_CLEAN = WORK / "vars_clean.fd"

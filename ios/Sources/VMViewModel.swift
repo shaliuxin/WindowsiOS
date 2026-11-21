@@ -34,6 +34,14 @@ enum PostureMode: String, CaseIterable {
         case .fullScreen: return "ipad.landscape"
         }
     }
+
+    var localizedName: String {
+        switch self {
+        case .auto: return "自动"
+        case .laptop: return "笔记本"
+        case .fullScreen: return "工作台"
+        }
+    }
 }
 
 enum DeckLayout: String, CaseIterable {
@@ -46,6 +54,14 @@ enum DeckLayout: String, CaseIterable {
         case .split: return "laptopcomputer"
         case .trackpad: return "rectangle.and.hand.point.up.left"
         case .keyboard: return "keyboard"
+        }
+    }
+
+    var localizedName: String {
+        switch self {
+        case .split: return "分屏"
+        case .trackpad: return "触控板"
+        case .keyboard: return "键盘"
         }
     }
 
@@ -65,8 +81,8 @@ final class VMViewModel: ObservableObject {
     @Published var isVMRunning: Bool = false
     @Published var isUnpacking: Bool = false
     @Published var unpackProgress: Double = 0
-    @Published var jitStatusText: String = "Checking JIT..."
-    @Published var vmStatusText: String = "Initializing..."
+    @Published var jitStatusText: String = "正在检查 JIT..."
+    @Published var vmStatusText: String = "正在初始化..."
     @Published var fbWidth: UInt32 = 0
     @Published var fbHeight: UInt32 = 0
     @Published var presentedFrames: UInt64 = 0
@@ -259,19 +275,21 @@ final class VMViewModel: ObservableObject {
 
     func requestStikDebugJIT() {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        var urlStr = "stikjit://enable-jit?bundle-id=\(bundleID)&pid=\(getpid())"
+        var components = URLComponents()
+        components.scheme = "stikdebug"
+        components.host = "enable-jit"
+        components.queryItems = [
+            URLQueryItem(name: "bundle-id", value: bundleID),
+            URLQueryItem(name: "pid", value: String(getpid())),
+        ]
         if let scriptPath = Bundle.main.path(forResource: "henge-jit", ofType: "js"),
            let script = try? String(contentsOfFile: scriptPath, encoding: .utf8),
            let data = script.data(using: .utf8) {
-            let b64 = data.base64EncodedString()
-                .replacingOccurrences(of: "+", with: "-")
-                .replacingOccurrences(of: "/", with: "_")
-                .trimmingCharacters(in: CharacterSet(charactersIn: "="))
-            if let encoded = b64.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-                urlStr += "&script-data=\(encoded)"
-            }
+            components.queryItems?.append(
+                URLQueryItem(name: "script-data", value: data.base64EncodedString())
+            )
         }
-        if let url = URL(string: urlStr) {
+        if let url = components.url {
             UIApplication.shared.open(url, options: [:], completionHandler: nil)
         }
     }

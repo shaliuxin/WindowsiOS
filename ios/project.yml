@@ -7,10 +7,8 @@ options:
 
 settings:
   base:
-    DEVELOPMENT_TEAM: 7S264298H8
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "Apple Development"
-    PROVISIONING_PROFILE_SPECIFIER: "WindowsiOS Duo Dev"
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SWIFT_VERSION: "5.0"
@@ -35,9 +33,12 @@ targets:
         UILaunchScreen: {}
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        LSApplicationQueriesSchemes:
+          - stikdebug
+          - stikjit
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
-        NSMicrophoneUsageDescription: "Windows 11 and Antigravity use your iPhone Duo microphone for live voice input and audio capture."
+        NSMicrophoneUsageDescription: "Windows 11 使用 iPhone 的麦克风进行语音输入和音频采集。"
         UIBackgroundModes:
           - audio
         UISupportedInterfaceOrientations:
@@ -58,9 +59,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.ammaar.windowsios
         PRODUCT_NAME: WindowsiOS
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: "Apple Development: Ammaar Reshi (6U8W89GC8D)"
-        PROVISIONING_PROFILE_SPECIFIER: "WindowsiOS Duo Dev"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_OBJC_BRIDGING_HEADER: $(PROJECT_DIR)/Sources/Native/WindowsiOS-Bridging-Header.h
         HEADER_SEARCH_PATHS:
