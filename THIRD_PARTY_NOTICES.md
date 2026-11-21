@@ -72,6 +72,7 @@ Credited with gratitude for demonstrating early guest OS bring-up workflows, iOS
 On iOS 26 and iOS 27 devices equipped with Apple's Trusted Execution Monitor (**TXM**), hardware enforcement blocks ordinary `MAP_JIT` execution without debugger page-blessing. `WindowsiOS` uses the `BRK #0x69` / `BRK #0xF00D` protocol (`ios/Sources/Native/winios_brk.S`, `ios/Sources/Resources/henge-jit.js`, and `scripts/_lldb_txm_jit.py`) pioneered by `StikDebug` / `StikJIT` and adapted by `Leviidev/Henge` to allocate and bless dual-mapped RX/RW JIT regions (`_M<size>,rx` + `vm_remap`) and pre-allocate ledger-exempt guest RAM while `CS_DEBUGGED` is active prior to debugger detach.
 
 - `StikJIT` framework components (when optionally staged via `scripts/build_ios_deps.sh`) are governed by the **Mozilla Public License Version 2.0** (`MPL-2.0`, compatible with `GPL-2.0-or-later` Larger Works under MPL-2.0 Section 3.3). Full MPL-2.0 text: <https://www.mozilla.org/MPL/2.0/>.
+- The release asset `StikDebug-3.2.2.ipa` is a repack of upstream **StikDebug 3.2.2** (`com.stik.stikdebug`). Only resource-level changes were made — `CFBundleURLSchemes` gains `stikdebug` alongside the upstream `stikjit`, and `zh-Hans` status strings are localized; the executable and the `*.js` JIT scripts are unmodified. Full modification list, checksums and reproduction steps: [`docs/stikdebug-repack.md`](docs/stikdebug-repack.md).
 - `idevice` (Copyright (c) Jackson Coxson) is licensed under the **MIT License**.
 
 ---

@@ -16,7 +16,7 @@
 
 > **🇨🇳 中文说明**：本项目已完成 **Windows 11 26H1 ARM64 中文版**镜像构建（Build 28000，不精简、全驱动、100 GB、中文桌面）与 **App 界面汉化**，打通了基于 StikDebug 的**纯手机端免电脑启动**，并在 App 内加入**可切换的高分辨率显示**（800×600 → 1920×1080，共 18 档 GOP 模式，默认 1920 × 1080）与**中英双语界面**（跟随 iOS 系统语言自动选择，也可手动切换）。完整构建记录、踩坑与知识总结见 [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md)。
 >
-> **📦 编译产物下载**：[Releases / v26H1-zh-hires](https://github.com/shaliuxin/WindowsiOS/releases/tag/v26H1-zh-hires) —— IPA、高分辨率固件、NVRAM、18.41 GiB 镜像经 zstd 压缩至 8.10 GiB 分 6 片与 `SHA256SUMS`；还原方式见文档第六节。
+> **📦 编译产物下载**：[Releases / v26H1-zh-hires](https://github.com/shaliuxin/WindowsiOS/releases/tag/v26H1-zh-hires) —— IPA、高分辨率固件、NVRAM、StikDebug 3.2.2 重新打包版、18.41 GiB 镜像经 zstd 压缩至 8.10 GiB 分 6 片与 `SHA256SUMS`；还原方式见文档第六节。
 
 ---
 
@@ -235,7 +235,7 @@ make -j8 all ios-lib test-core
 
 > For the **26H1 zh-cn full (non-featherweight) image** with all VirtIO drivers and the Chinese UI, on-device StikDebug JIT setup, switchable high-resolution GOP (up to 3840×2160, default 1920×1080), and a zh/en bilingual UI (system-default or manual), see [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md).
 >
-> **📦 Prebuilt artifacts**: [Releases / v26H1-zh-hires](https://github.com/shaliuxin/WindowsiOS/releases/tag/v26H1-zh-hires) — unsigned IPA, high-res firmware, NVRAM, the 18.41 GiB disk image zstd-compressed to 8.10 GiB and split into 6 parts, and `SHA256SUMS`. See section 6 of the build notes for reassembly.
+> **📦 Prebuilt artifacts**: [Releases / v26H1-zh-hires](https://github.com/shaliuxin/WindowsiOS/releases/tag/v26H1-zh-hires) — unsigned IPA, high-res firmware, NVRAM, a repackaged StikDebug 3.2.2, the 18.41 GiB disk image zstd-compressed to 8.10 GiB and split into 6 parts, and `SHA256SUMS`. See section 6 of the build notes for reassembly.
 
 ### 3. Run Locally on macOS (`build/winvm`)
 ```bash

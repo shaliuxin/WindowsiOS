@@ -348,11 +348,11 @@ zstd -d windows11.hvsparse.zst      # 得到 19,762,451,824 B 的 windows11.hvsp
 
 ### StikDebug 重新打包说明
 
-`StikDebug-3.2.2.ipa` 基于上游 StikDebug 3.2.2（bundle id `com.stik.stikdebug`，原始分发 [stikdebug.xyz](https://stikdebug.xyz)）重新打包，相对上游的改动：
+`StikDebug-3.2.2.ipa` 基于上游 [`StephenDev0/StikDebug`](https://github.com/StephenDev0/StikDebug) 3.2.2（bundle id `com.stik.stikdebug`，原始分发 [stikdebug.xyz](https://stikdebug.xyz)，主体 MPL-2.0 / StikJIT 部分 BSD-3-Clause）重新打包。相对上游的改动：
 
 - **注册 `stikdebug://` URL scheme**（上游只有 `stikjit://`）—— WindowsiOS 用 `stikdebug://enable-jit?bundle-id=…&pid=…&script-data=…` 唤起，旧 scheme 在 3.2.2 上不生效，这是「点启用 JIT 没反应」的根因；
 - 状态文本中文化（`Idle` → `空闲`、`Waiting for TXM JIT…` → `等待 TXM JIT（请用 StikDebug 附加）` 等）；
-- 未签名；版权归上游作者，本仓库仅作同版本兼容性重新打包，遵循上游许可证。
+- 改动**仅在资源层**（`Info.plist` 与 `zh-Hans.lproj/Localizable.strings`），未重新编译可执行文件，也未改动 `universal.js` 等 JIT 逻辑；完整复现步骤、校验和与许可说明见 [`docs/stikdebug-repack.md`](stikdebug-repack.md)。
 
 工作方式：WindowsiOS 发起 URL 请求后，StikDebug 用 `BRK #0x69` 探测 / `BRK #0xF00D` 为目标进程分配并「祝福」384 MiB RX 内存，JIT 即可脱离电脑使用。
 
