@@ -320,21 +320,27 @@ App 内所有可见文本——启动遮罩、Studio 工具栏、笔记本键盘
 | `code_800x600_original.fd` | 64 MB | 原版 800×600 固件，回滚用 |
 | `vars.fd` | 64 MB | UEFI NVRAM（与 5.3 节 Mac 端 1920×1080 验证同一份） |
 | `WindowsiOS_legacy_zh.ipa` | 536 KB | 上一版中文 IPA，回滚用 |
-| `windows11.hvsparse.part00` … `part13` | 合计 19,762,451,824 B | 100 GB 稀疏镜像，14 片 × 1400 MiB |
-| `SHA256SUMS` | — | 全部文件（含合并后的原镜像）的校验和 |
+| `windows11.hvsparse.zst.part00` … `part05` | 合计 8,701,255,261 B | 镜像 zstd 压缩包（8.10 GiB）再切 6 片 × 1400 MiB |
+| `SHA256SUMS` | — | 全部文件（含合并后的 `.zst` 与解压后的原镜像）的校验和 |
 
-### 为什么必须分片
+### 压缩与分片策略
 
-GitHub Release **单个 asset 硬上限 2 GB**，而 `windows11.hvsparse` 是 18.41 GiB。按**原始格式**切成 14 片（每片 1400 MiB，`split -b 1400m -d -a 2`）：App 的自动解包逻辑要求原始 `HVSPARSE` 文件，压缩虽能把体积降到约 36%，但会额外要求用户解压，且改变交付形态，因此不采用。
+GitHub Release **单个 asset 硬上限 2 GB**，而 `windows11.hvsparse` 是 18.41 GiB（19,762,451,824 B），无论压缩与否都必须分片。方案演进：
 
-> 上传实现备忘：`curl --data-binary @file` 会把整个文件读进内存，1.3 GiB 分片直接 OOM。改用 `http.client` 流式 `POST`（手工设置 `Content-Length`，逐 4 MiB 块 `conn.send()`），带重试与「跳过已存在 asset」的断点续传，脚本逻辑见 `/tmp/winios_upload_parts.py`（一次性工具，未入库）。
+1. 最初按**原始格式**切 14 片（每片 1.4 GiB，总计 18.41 GiB 直传）—— 实测上行仅 ~5.5 MiB/s，每片 4 分钟、全部约 1 小时，对下载方也是巨大负担，已放弃并删除已传分片；
+2. 最终改为**先压缩再分片**：`zstd -6 -T0` 多线程压缩 18.41 GiB → **8.10 GiB（44.03%），仅 11.6 秒**，再 `split -b 1400m` 切成 6 片。下载量从 18.41 GiB 降到 8.10 GiB，上传时间同步缩短 58%。
+
+代价是解压需要 `zstd`（macOS `brew install zstd`；主流 Linux 发行版自带；Windows 有官方二进制）。
+
+> 上传实现备忘：`curl --data-binary @file` 会把整个文件读进内存，1.3 GiB 分片直接 OOM。改用 `http.client` 流式 `POST`（手工设置 `Content-Length`，逐 4 MiB 块 `conn.send()`），3 路并发 + 每片 4 次重试 + 「跳过已存在 asset」断点续传。`zstd -T0` 多线程压缩同样关键 —— 单线程 gzip 压 18 GiB 要十几分钟，多线程 zstd 只要 12 秒。
 
 ### 下载后还原
 
 ```bash
-# 下载全部 14 个分片后
-cat windows11.hvsparse.part* > windows11.hvsparse
-shasum -a 256 -c SHA256SUMS        # Linux: sha256sum -c SHA256SUMS
+# 需要 zstd：macOS brew install zstd；Linux 大多自带
+cat windows11.hvsparse.zst.part* > windows11.hvsparse.zst
+shasum -a 256 -c SHA256SUMS         # Linux: sha256sum -c SHA256SUMS
+zstd -d windows11.hvsparse.zst      # 得到 19,762,451,824 B 的 windows11.hvsparse
 ```
 
 把 `windows11.hvsparse`、`code.fd`、`vars.fd` 一起放入 App 容器 `Documents/Machines/Win11/`；当 `windows11.img` 为 0 字节或不存在时，App 会自动解包为 100 GB。若换回 `code_800x600_original.fd`，固件不认识 `opt/siliconwin/resolution` 会回落默认模式，不会启动失败（见 5.5 节向后兼容说明）。
