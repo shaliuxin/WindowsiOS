@@ -607,6 +607,43 @@ struct SessionView: View {
             }
 
             if !vm.isUnpacking {
+                // 显示分辨率选择：写入 HV_RESOLUTION，由高分辨率固件在下次启动时生效
+                VStack(spacing: 6) {
+                    Menu {
+                        Section("常用") {
+                            ForEach(GuestResolution.allCases.filter(\.isRecommended)) { res in
+                                resolutionMenuItem(res)
+                            }
+                        }
+                        Section("更多分辨率") {
+                            ForEach(GuestResolution.allCases.filter { !$0.isRecommended }) { res in
+                                resolutionMenuItem(res)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 7) {
+                            Image(systemName: "display")
+                                .font(.system(size: 11, weight: .medium))
+                            Text("显示分辨率 \(vm.resolutionPreset.displayName)")
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 8.5, weight: .semibold))
+                        }
+                        .foregroundStyle(.white.opacity(0.88))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.20), lineWidth: 0.6))
+                    }
+
+                    Text("需搭配高分辨率固件 code.fd，重启虚拟机后生效")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.42))
+                }
+                .padding(.bottom, 2)
+            }
+
+            if !vm.isUnpacking {
                 HStack(spacing: 10) {
                     if !vm.isJITLive {
                         Button {
@@ -660,5 +697,19 @@ struct SessionView: View {
                 )
         )
         .shadow(color: .black.opacity(0.70), radius: 24, x: 0, y: 10)
+    }
+
+    @ViewBuilder
+    private func resolutionMenuItem(_ res: GuestResolution) -> some View {
+        Button {
+            vm.resolutionPreset = res
+            uiHaptic.impactOccurred(intensity: 0.5)
+        } label: {
+            if res == vm.resolutionPreset {
+                Label(res.displayName, systemImage: "checkmark")
+            } else {
+                Text(res.displayName + (res == .fhd ? "  · 推荐" : ""))
+            }
+        }
     }
 }

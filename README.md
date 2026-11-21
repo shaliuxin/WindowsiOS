@@ -14,7 +14,7 @@
 
 ---
 
-> **🇨🇳 中文说明**：本项目已完成 **Windows 11 26H1 ARM64 中文版**镜像构建（Build 28000，不精简、全驱动、100 GB、中文桌面）与 **App 界面汉化**，并打通了基于 StikDebug 的**纯手机端免电脑启动**。完整构建记录、踩坑与知识总结见 [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md)。
+> **🇨🇳 中文说明**：本项目已完成 **Windows 11 26H1 ARM64 中文版**镜像构建（Build 28000，不精简、全驱动、100 GB、中文桌面）与 **App 界面汉化**，打通了基于 StikDebug 的**纯手机端免电脑启动**，并在 App 内加入**可切换的高分辨率显示**（800×600 → 1920×1080，共 18 档 GOP 模式，默认 1920 × 1080）。完整构建记录、踩坑与知识总结见 [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md)。
 
 ---
 
@@ -231,7 +231,7 @@ make -j8 all ios-lib test-core
 ./build/hvsparse pack work/windows11_lite.img work/windows11.hvsparse
 ```
 
-> For the **26H1 zh-cn full (non-featherweight) image** with all VirtIO drivers and the Chinese UI, plus on-device StikDebug JIT setup, see [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md).
+> For the **26H1 zh-cn full (non-featherweight) image** with all VirtIO drivers and the Chinese UI, on-device StikDebug JIT setup, and switchable high-resolution GOP (up to 3840×2160, default 1920×1080), see [`docs/26H1-ZH-BUILD-NOTES.md`](docs/26H1-ZH-BUILD-NOTES.md).
 
 ### 3. Run Locally on macOS (`build/winvm`)
 ```bash

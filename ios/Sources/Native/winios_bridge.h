@@ -26,6 +26,9 @@ typedef void (^WinIOSStateCallback)(void);
 @property (nonatomic, readonly) BOOL usbTabletReady;
 @property (nonatomic, readonly) uint64_t usbEventsDelivered;
 @property (nonatomic, assign) BOOL useSafariForGuestLinks;
+/// 主机请求的 GOP 分辨率（如 "1920x1080"），由 patched EDK2 ramfb 固件读取。
+/// nil / 空字符串表示使用固件默认模式，兼容未替换的旧 code.fd。
+@property (nonatomic, copy, nullable) NSString *resolutionPreset;
 @property (nonatomic, copy, nullable) WinIOSStateCallback onStateChanged;
 
 - (nullable NSString *)takeGuestOpenURL;

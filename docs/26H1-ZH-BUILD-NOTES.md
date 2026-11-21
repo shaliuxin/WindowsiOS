@@ -220,4 +220,52 @@ HV_RESOLUTION=1920x1080 ./build/winvm \
 
 范围限制：宽 640–5120，高 480–2880。固件自身会再校验一次；无效值被忽略并回退默认模式。
 
-**尚未验证**：iPhone 端。固件已在 Mac QEMU 上通过回归测试，但手机端需要把 `hires-code.fd` 传进 App 容器替换 `code.fd`，并在 App 内设置 `HV_RESOLUTION`（目前 App 没有暴露该设置的 UI）。这一步需在真机上测试后确认。
+### 5.5 手机端接入（2026-11-21 完成）
+
+高分辨率方案已接入 iOS App，完整链路：
+
+```
+启动界面选择 → NSUserDefaults("winios.resolutionPreset")
+  → WinIOSBridge.startConfiguredVMInDirectory: setenv("HV_RESOLUTION", "<w>x<h>")
+  → devices/winvirt.c 读环境变量并写入 fw_cfg "opt/siliconwin/resolution"
+  → patched QemuRamfbDxe 设定 GOP 模式（PcdVideo*Resolution）
+  → Windows on Arm 继承该 GOP 模式，进入对应分辨率的中文桌面
+```
+
+对应源码改动：
+
+- `ios/Sources/VMViewModel.swift`：新增 `GuestResolution` 枚举，与固件 18 档 GOP 模式一一对应（640×480 → 3840×2160），**默认 1920 × 1080**，选择持久化到 `NSUserDefaults`；
+- `ios/Sources/SessionView.swift`：启动遮罩新增中文「显示分辨率」下拉菜单，分「常用 / 更多分辨率」两组；
+- `ios/Sources/Native/winios_bridge.h/.m`：新增 `resolutionPreset` 属性；在 `hv_winvm_create` 之前 `setenv("HV_RESOLUTION", ...)`，未设置时 `unsetenv` 回落固件默认模式；`boot_status.txt` 增加 `resolution_preset:` 行便于真机排障。
+
+**向后兼容**：原版 `code.fd` 不认识 `opt/siliconwin/resolution` 这个 fw_cfg key，会直接回落到自身默认模式；因此即使 App 设置了高分辨率，换回旧固件也不会启动失败。反之，新固件 + 不设置分辨率同样能正常启动。
+
+#### 部署记录（已通过 `xcrun devicectl` 完成）
+
+| 文件 | 目标容器 | 目标路径 |
+|---|---|---|
+| `work/firmware-build/hires-code.fd` | `me.ammaar.windowsios.83K872NSAG` | `Documents/Machines/Win11/code.fd` |
+| `build/WindowsiOS_高分辨率.ipa` | `com.kdt.livecontainer.83K872NSAG` | `Documents/WindowsiOS_高分辨率.ipa` |
+
+两份文件均已回读并校验 SHA-256 一致。Mac 侧同步更新 `WindowsIOS_交付_26H1/` 中的 `WindowsiOS.ipa` 与 `code.fd`；旧固件、旧 IPA 分别保留为 `code_800x600_原版.fd`、`WindowsiOS_汉化旧版.ipa` 以便回滚。手机端 `vars.fd` 与 5.3 节 Mac 端 1920×1080 验证所用文件 SHA-256 完全一致，NVRAM 兼容性已覆盖。
+
+> 注意：`libwinvm.a` 必须重新编译。`devices/winvirt.c` 的 `HV_RESOLUTION` 读取逻辑在静态库里，只改 Swift/ObjC 而不重编 `make ios-lib` 会导致设置不生效。
+
+#### 用户操作要点
+
+1. 在 LiveContainer 里用**「替换 / 更新」**导入新 IPA，**不要卸载旧的 Windows 11** —— 卸载会连带清空 App 容器里的 18 GB 镜像与固件。
+2. 重新打开 App，点「启用 JIT」经 StikDebug 重新获取 JIT（覆盖安装后 JIT 失效）。
+3. 在启动遮罩选择「显示分辨率」（默认 1920 × 1080），点「启动 Windows 11」。
+4. 分辨率只在 VM **创建时**读取，切换档位后需重启 VM / App 才生效。
+
+#### 真机验证方法
+
+```bash
+xcrun devicectl device copy from --device <UDID> \
+  --domain-type appDataContainer \
+  --domain-identifier me.ammaar.windowsios.83K872NSAG \
+  --source Documents/boot_status.txt --destination /tmp/boot_status.txt
+grep -E "fb_size|resolution_preset" /tmp/boot_status.txt
+```
+
+`fb_size: 1920x1080` 且 `resolution_preset: 1920x1080` 即表示链路已生效。

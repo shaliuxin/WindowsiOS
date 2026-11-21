@@ -22,6 +22,47 @@ struct SafariSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
+/// 与 firmware/QemuRamfb.c 中 patched QemuRamfbDxe 的 18 档 GOP 模式一一对应。
+/// 固件还支持任意自定义尺寸，这里只暴露标准档位。
+enum GuestResolution: String, CaseIterable, Identifiable {
+    case vga       = "640x480"
+    case svga      = "800x600"
+    case xga       = "1024x768"
+    case hd720     = "1280x720"
+    case wxga      = "1280x800"
+    case sxga      = "1280x1024"
+    case hd768     = "1366x768"
+    case wxgaPlus  = "1440x900"
+    case hd900     = "1600x900"
+    case uxga      = "1600x1200"
+    case wsxga     = "1680x1050"
+    case fhd       = "1920x1080"
+    case wuxga     = "1920x1200"
+    case qwxga     = "2048x1152"
+    case qhd       = "2560x1440"
+    case wqxga     = "2560x1600"
+    case wqxgaPlus = "2880x1800"
+    case uhd       = "3840x2160"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        let parts = rawValue.split(separator: "x")
+        guard parts.count == 2 else { return rawValue }
+        return "\(parts[0]) × \(parts[1])"
+    }
+
+    /// 手机屏幕上常用且帧缓冲带宽可控的档位。
+    var isRecommended: Bool {
+        switch self {
+        case .svga, .xga, .hd720, .wxga, .hd768, .hd900, .fhd, .qhd:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 enum PostureMode: String, CaseIterable {
     case auto = "Auto"
     case laptop = "Laptop"
@@ -104,12 +145,23 @@ final class VMViewModel: ObservableObject {
     @Published var systemKeyboardVisible: Bool = false
     @Published var activeSafariURL: IdentifiableURL? = nil
     @Published var useSafariForOAuth: Bool = WinIOSBridge.shared.useSafariForGuestLinks
+    @Published var resolutionPreset: GuestResolution = .fhd {
+        didSet {
+            UserDefaults.standard.set(resolutionPreset.rawValue, forKey: "winios.resolutionPreset")
+            WinIOSBridge.shared.resolutionPreset = resolutionPreset.rawValue
+        }
+    }
 
     private var didAutoLaunchAttempt = false
     private var oauthPollTimer: Timer? = nil
 
     init() {
         let bridge = WinIOSBridge.shared
+        if let saved = UserDefaults.standard.string(forKey: "winios.resolutionPreset"),
+           let preset = GuestResolution(rawValue: saved) {
+            resolutionPreset = preset
+        }
+        bridge.resolutionPreset = resolutionPreset.rawValue
         bridge.installTrapGuard()
         bridge.onStateChanged = { [weak self] in
             Task { @MainActor in

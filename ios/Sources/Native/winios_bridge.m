@@ -380,6 +380,16 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     NSString *ramBacking = [NSTemporaryDirectory() stringByAppendingPathComponent:@"win11_guest_ram.bin"];
     setenv("HV_RAM_FILE", ramBacking.fileSystemRepresentation, 1);
 
+    /* 高分辨率 GOP：把 App 内用户选择的分辨率交给 patched EDK2 ramfb 固件。
+     * devices/winvirt.c 读取 HV_RESOLUTION 并写入 fw_cfg "opt/siliconwin/resolution"。
+     * 未选择时 unsetenv，固件回落到默认模式，原始 800x600 code.fd 也能照常启动。 */
+    NSString *requestedResolution = self.resolutionPreset;
+    if (requestedResolution.length > 0) {
+        setenv("HV_RESOLUTION", requestedResolution.UTF8String, 1);
+    } else {
+        unsetenv("HV_RESOLUTION");
+    }
+
     uint64_t preallocBytes = 0;
     void *preallocRam = winios_jit_guest_ram(&preallocBytes);
     uint64_t ramMB = 3072;
@@ -556,7 +566,8 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
         @"oauth_safari: %d\n"
         @"hinge_status: %ld\n"
         @"hinge_angle_deg: %.1f\n"
-        @"screen_pts: %.0fx%.0f @%.0fx\n",
+        @"screen_pts: %.0fx%.0f @%.0fx\n"
+        @"resolution_preset: %@\n",
         running ? @"true" : @"false",
         _vmStatus ?: @"",
         self.isJITLive ? @"true" : @"false",
@@ -578,7 +589,8 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
         hv_share_url_handler_enabled(),
         (long)hingeStatus,
         hingeDeg,
-        pt.width, pt.height, scale];
+        pt.width, pt.height, scale,
+        self.resolutionPreset ?: @"default"];
     [txt writeToFile:statusFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
@@ -666,6 +678,22 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 - (void)setUseSafariForGuestLinks:(BOOL)useSafariForGuestLinks {
     hv_share_set_url_handler_enabled(useSafariForGuestLinks ? 1 : 0);
     [[NSUserDefaults standardUserDefaults] setBool:useSafariForGuestLinks forKey:@"winios.safariOAuthV2"];
+}
+
+#pragma mark - 高分辨率 GOP 预设（持久化到 NSUserDefaults）
+
+- (nullable NSString *)resolutionPreset {
+    NSString *s = [[NSUserDefaults standardUserDefaults] stringForKey:@"winios.resolutionPreset"];
+    return s.length > 0 ? s : nil;
+}
+
+- (void)setResolutionPreset:(nullable NSString *)resolutionPreset {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (resolutionPreset.length > 0) {
+        [ud setObject:resolutionPreset forKey:@"winios.resolutionPreset"];
+    } else {
+        [ud removeObjectForKey:@"winios.resolutionPreset"];
+    }
 }
 
 - (nullable NSString *)takeGuestOpenURL {
