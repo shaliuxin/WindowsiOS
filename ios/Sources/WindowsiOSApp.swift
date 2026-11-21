@@ -4,11 +4,13 @@ import SwiftUI
 @main
 struct WindowsiOSApp: App {
     @StateObject private var viewModel = VMViewModel()
+    @StateObject private var loc = LocalizationManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             SessionView(vm: viewModel)
+                .environmentObject(loc)
                 .preferredColorScheme(.dark)
                 .onAppear {
                     viewModel.onAppBecameActive()

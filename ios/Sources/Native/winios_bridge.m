@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #import "winios_bridge.h"
+#import "winios_l10n.h"
 
 #include "hvsparse.h"
 #include "share.h"
@@ -78,7 +79,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _vmStatus = @"空闲";
+        _vmStatus = WinIOSL(@"空闲", @"Idle");
         _metricsLock = OS_UNFAIR_LOCK_INIT;
         _screenSizePts = CGSizeZero;
         _screenScale = 3.0;
@@ -292,7 +293,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
 - (void)updateUnpackProgress:(double)frac {
     _unpackProgress = frac;
-    _vmStatus = [NSString stringWithFormat:@"正在解压 Windows 11 镜像 (%.0f%%)...", frac * 100.0];
+    _vmStatus = [NSString stringWithFormat:WinIOSL(@"正在解压 Windows 11 镜像 (%.0f%%)...", @"Unpacking Windows 11 image (%.0f%%)..."), frac * 100.0];
     dispatch_async(_diagQueue, ^{
         [self writeDiagnosticsSnapshot];
     });
@@ -313,7 +314,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     if (!self.isJITLive) {
         [self tryAcquireJIT:YES];
         if (!self.isJITLive) {
-            _vmStatus = @"等待 TXM JIT（请用 StikDebug 附加）";
+            _vmStatus = WinIOSL(@"等待 TXM JIT（请用 StikDebug 附加）", @"Waiting for TXM JIT (attach with StikDebug)");
             dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
             [self notifyChanged];
             return;
@@ -321,7 +322,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     }
 
     if (![self hasProvisionedMachine]) {
-        _vmStatus = @"请将 code.fd、vars.fd 和 windows11.hvsparse 放入 Documents/Machines/Win11";
+        _vmStatus = WinIOSL(@"请将 code.fd、vars.fd 和 windows11.hvsparse 放入 Documents/Machines/Win11", @"Place code.fd, vars.fd and windows11.hvsparse in Documents/Machines/Win11");
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
         return;
@@ -331,7 +332,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     if ([self needsSparseUnpack]) {
         _unpacking = YES;
         _unpackProgress = 0.0;
-        _vmStatus = @"正在解压 Windows 11 镜像 (0%)...";
+        _vmStatus = WinIOSL(@"正在解压 Windows 11 镜像 (0%)...", @"Unpacking Windows 11 image (0%)...");
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
 
@@ -354,7 +355,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
                     [self startConfiguredVMInDirectory:dir];
                 } else {
                     unlink(tmpDst.fileSystemRepresentation);
-                    self->_vmStatus = @"错误：解压 windows11.hvsparse 失败";
+                    self->_vmStatus = WinIOSL(@"错误：解压 windows11.hvsparse 失败", @"Error: failed to unpack windows11.hvsparse");
                     dispatch_async(self->_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
                     [self notifyChanged];
                 }
@@ -372,7 +373,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
     WinIosDualMapping jit = winios_jit_mapping();
     if (!jit.rx_addr || !jit.rw_addr) {
-        _vmStatus = @"错误：JIT 内存区域缺失";
+        _vmStatus = WinIOSL(@"错误：JIT 内存区域缺失", @"Error: JIT memory region missing");
         [self notifyChanged];
         return;
     }
@@ -438,7 +439,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 
     char err[256] = {0};
     if (hv_winvm_create(&cfg, err, sizeof err) != 0) {
-        _vmStatus = [NSString stringWithFormat:@"虚拟机创建失败：%s", err];
+        _vmStatus = [NSString stringWithFormat:WinIOSL(@"虚拟机创建失败：%s", @"Failed to create VM: %s"), err];
         dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
         [self notifyChanged];
         return;
@@ -455,7 +456,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     _lastMachTicks = mach_absolute_time();
     _lastWfiTicks = 0;
     _lastWfiIdlePct = 0.0;
-    _vmStatus = [NSString stringWithFormat:@"正在运行 Windows 11 ARM64（%d 核 CPU，%llu MB 内存）", _configuredCPUs, _configuredRamMB];
+    _vmStatus = [NSString stringWithFormat:WinIOSL(@"正在运行 Windows 11 ARM64（%d 核 CPU，%llu MB 内存）", @"Running Windows 11 ARM64 (%d CPUs, %llu MB RAM)"), _configuredCPUs, _configuredRamMB];
     [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
 
     hv_winvm_start(1, vm_exit_trampoline);
@@ -598,7 +599,7 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
     _vmRunning = NO;
     [self stopDiagTimer];
     [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
-    _vmStatus = [NSString stringWithFormat:@"已停止（%@）", reason];
+    _vmStatus = [NSString stringWithFormat:WinIOSL(@"已停止（%@）", @"Stopped (%@)"), reason];
     dispatch_async(_diagQueue, ^{ [self writeDiagnosticsSnapshot]; });
     [self notifyChanged];
 }
@@ -678,6 +679,27 @@ static void unpack_progress_cb(uint64_t done, uint64_t total, void *opaque) {
 - (void)setUseSafariForGuestLinks:(BOOL)useSafariForGuestLinks {
     hv_share_set_url_handler_enabled(useSafariForGuestLinks ? 1 : 0);
     [[NSUserDefaults standardUserDefaults] setBool:useSafariForGuestLinks forKey:@"winios.safariOAuthV2"];
+}
+
+#pragma mark - 界面语言切换
+
+/* 语言切换后重建缓存的状态文本（JIT 状态由 winios_jit_refresh_status_l10n 重建）。
+ * 瞬时错误状态会在下一次事件里自动改用新语言。 */
+- (void)refreshLocalizedStatus {
+    winios_jit_refresh_status_l10n();
+    if (_unpacking) {
+        [self notifyChanged];
+        return;
+    }
+    if (_vmRunning) {
+        _vmStatus = [NSString stringWithFormat:WinIOSL(
+            @"正在运行 Windows 11 ARM64（%d 核 CPU，%llu MB 内存）",
+            @"Running Windows 11 ARM64 (%d CPUs, %llu MB RAM)"),
+            _configuredCPUs, _configuredRamMB];
+    } else {
+        _vmStatus = WinIOSL(@"空闲", @"Idle");
+    }
+    [self notifyChanged];
 }
 
 #pragma mark - 高分辨率 GOP 预设（持久化到 NSUserDefaults）

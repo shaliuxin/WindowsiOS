@@ -30,7 +30,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Windows 11 使用 iPhone 的麦克风进行语音输入和音频采集。</string>
+	<string>Windows 11 使用 iPhone 麦克风进行语音输入和音频采集。 / Windows 11 uses the iPhone microphone for voice input and audio capture.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

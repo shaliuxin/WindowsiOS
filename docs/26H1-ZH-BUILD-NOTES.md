@@ -269,3 +269,24 @@ grep -E "fb_size|resolution_preset" /tmp/boot_status.txt
 ```
 
 `fb_size: 1920x1080` 且 `resolution_preset: 1920x1080` 即表示链路已生效。
+
+### 5.6 中英双语界面（跟随系统 + 手动切换，2026-11-21 完成）
+
+App 内所有可见文本——启动遮罩、Studio 工具栏、笔记本键盘区、JIT / VM 状态、错误提示——均支持中英文。默认**跟随 iOS 系统语言**：系统首选语言以 `zh` 开头（含 zh-Hans / zh-Hant / zh-HK）显示中文，其余显示英文。
+
+实现要点：
+
+- `ios/Sources/Localization.swift`：`AppLanguage`（`system` / `zhHans` / `en`）+ `LocalizationManager`（`@Published selection`，持久化到 `NSUserDefaults("winios.appLanguage")`）+ 全局便捷函数 `L("中文", "English")`；`effective` 负责 system 判定，View 通过 `@EnvironmentObject` 建立重绘依赖。
+- `ios/Sources/Native/winios_l10n.h/.m`：`WinIOSUseEnglish()` / `WinIOSL(zh, en)`，使 **ObjC 与纯 C** 代码读取同一个偏好；`winios_jit.c` 用 `SET_STATUS(zh, en, ...)` 宏在生成状态文本时选语言，两个格式串仍保留编译期 printf 检查。
+- `WinIOSBridge.refreshLocalizedStatus`：切换语言时重建缓存的 VM 状态文本；`winios_jit_refresh_status_l10n()` 重建 JIT 状态文本；`notifyChanged` 触发 Swift 层 `syncFromBridge()` 立即刷新。切换即时生效，无需重启 App。
+- 语言偏好只影响 **App 界面**，不影响 Windows 客户机系统语言（客户机仍是独立的 26H1 中文版镜像）。
+- `NSMicrophoneUsageDescription` 属于系统权限弹窗，无法在运行时切换，因此改为中英双语单句，两种系统语言下都可读。
+
+手动切换入口（两处，VM 运行前后都可达）：
+
+1. 启动遮罩：「界面语言 / Language」下拉菜单；
+2. Studio 顶部工具栏：🌐 语言胶囊，显示当前短标签（自动 / 中文 / EN）。
+
+三个选项本身用双语标注（跟随系统 / Auto、简体中文 / Chinese、English / 英文），任何界面语言下都能识别。偏好持久化，下次启动沿用。
+
+> 最终 IPA：`WindowsIOS_交付_26H1/WindowsiOS.ipa`（含高分辨率 + 双语），已同步推送到 LiveContainer 文档目录，覆盖同名旧文件。

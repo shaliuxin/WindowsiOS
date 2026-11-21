@@ -296,6 +296,7 @@ private struct LaptopKeySpec: Identifiable {
 
 struct LaptopDeckView: View {
     @ObservedObject var vm: VMViewModel
+    @EnvironmentObject var loc: LocalizationManager
 
     @State private var shiftLatched: Bool = false
     @State private var ctrlLatched: Bool = false
@@ -457,7 +458,7 @@ struct LaptopDeckView: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: "keyboard")
                                         .font(.system(size: 10, weight: .medium))
-                                    Text("分屏")
+                                    Text(loc.t("分屏", "Split"))
                                         .font(.system(size: 10, weight: .medium))
                                 }
                                 .foregroundStyle(.white.opacity(0.72))

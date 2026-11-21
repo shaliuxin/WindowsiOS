@@ -78,9 +78,9 @@ enum PostureMode: String, CaseIterable {
 
     var localizedName: String {
         switch self {
-        case .auto: return "自动"
-        case .laptop: return "笔记本"
-        case .fullScreen: return "工作台"
+        case .auto: return L("自动", "Auto")
+        case .laptop: return L("笔记本", "Laptop")
+        case .fullScreen: return L("工作台", "Studio")
         }
     }
 }
@@ -100,9 +100,9 @@ enum DeckLayout: String, CaseIterable {
 
     var localizedName: String {
         switch self {
-        case .split: return "分屏"
-        case .trackpad: return "触控板"
-        case .keyboard: return "键盘"
+        case .split: return L("分屏", "Split")
+        case .trackpad: return L("触控板", "Trackpad")
+        case .keyboard: return L("键盘", "Keyboard")
         }
     }
 
@@ -122,8 +122,8 @@ final class VMViewModel: ObservableObject {
     @Published var isVMRunning: Bool = false
     @Published var isUnpacking: Bool = false
     @Published var unpackProgress: Double = 0
-    @Published var jitStatusText: String = "正在检查 JIT..."
-    @Published var vmStatusText: String = "正在初始化..."
+    @Published var jitStatusText: String = L("正在检查 JIT...", "Checking JIT...")
+    @Published var vmStatusText: String = L("正在初始化...", "Initializing...")
     @Published var fbWidth: UInt32 = 0
     @Published var fbHeight: UInt32 = 0
     @Published var presentedFrames: UInt64 = 0

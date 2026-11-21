@@ -38,7 +38,7 @@ targets:
           - stikjit
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
-        NSMicrophoneUsageDescription: "Windows 11 使用 iPhone 的麦克风进行语音输入和音频采集。"
+        NSMicrophoneUsageDescription: "Windows 11 使用 iPhone 麦克风进行语音输入和音频采集。 / Windows 11 uses the iPhone microphone for voice input and audio capture."
         UIBackgroundModes:
           - audio
         UISupportedInterfaceOrientations:

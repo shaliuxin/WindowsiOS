@@ -34,6 +34,7 @@ typedef void (^WinIOSStateCallback)(void);
 - (nullable NSString *)takeGuestOpenURL;
 - (BOOL)takeGuestOAuthDone;
 
+- (void)refreshLocalizedStatus;
 - (void)installTrapGuard;
 - (BOOL)tryAcquireJIT:(BOOL)detachAfter;
 

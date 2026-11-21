@@ -29,6 +29,7 @@ bool winios_jit_is_live(void);
 WinIosDualMapping winios_jit_mapping(void);
 void *winios_jit_guest_ram(uint64_t *out_bytes);
 const char *winios_jit_status_text(void);
+void winios_jit_refresh_status_l10n(void);
 size_t winios_available_memory_bytes(void);
 
 #ifdef __cplusplus

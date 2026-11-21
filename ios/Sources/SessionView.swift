@@ -4,10 +4,13 @@ import UIKit
 
 struct SessionView: View {
     @ObservedObject var vm: VMViewModel
+    @EnvironmentObject var loc: LocalizationManager
     private let uiHaptic = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
         GeometryReader { geo in
+            // Reading loc.selection here makes a language change redraw the whole tree.
+            let _ = loc.selection
             let size = geo.size
             let laptopActive = vm.isLaptopLayoutActive(for: size)
 
@@ -142,7 +145,7 @@ struct SessionView: View {
                     ZStack {
                         HStack(spacing: 5) {
                             WindowsLogoMark(size: 7.5, color: Color.white.opacity(0.22))
-                            Text("表面")
+                            Text(L("表面", "Surface"))
                                 .font(.system(size: 7.5, weight: .semibold))
                                 .tracking(2.2)
                                 .foregroundStyle(Color.white.opacity(0.22))
@@ -328,7 +331,7 @@ struct SessionView: View {
     private func surfaceStudioFooterStrip(viewportSize: CGSize) -> some View {
         VStack(spacing: 10) {
             HStack {
-                Text("设备名称 = Surface Duo Ultra")
+                Text(L("设备名称 = Surface Duo Ultra", "Device = Surface Duo Ultra"))
                     .font(.system(size: 9.5, weight: .medium, design: .monospaced))
                     .tracking(1.1)
                     .foregroundStyle(Color(red: 0.72, green: 0.80, blue: 0.95).opacity(0.55))
@@ -347,7 +350,7 @@ struct SessionView: View {
 
             // Quick Studio Action Strip for Portrait Open Mode
             HStack(spacing: 8) {
-                studioQuickTile(title: "笔记本模式", icon: "laptopcomputer", prominent: true) {
+                studioQuickTile(title: L("笔记本模式", "Laptop"), icon: "laptopcomputer", prominent: true) {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                         vm.postureMode = .laptop
                         vm.systemKeyboardVisible = false
@@ -359,19 +362,19 @@ struct SessionView: View {
                     vm.launchGuestAntigravity()
                 }
 
-                studioQuickTile(title: "画图", icon: "paintbrush.pointed") {
+                studioQuickTile(title: L("画图", "Paint"), icon: "paintbrush.pointed") {
                     vm.launchGuestPaint()
                 }
 
-                studioQuickTile(title: "Edge 浏览器", icon: "globe") {
+                studioQuickTile(title: L("Edge 浏览器", "Edge Browser"), icon: "globe") {
                     vm.launchGuestEdgeBrowser()
                 }
 
-                studioQuickTile(title: "资源管理器", icon: "folder") {
+                studioQuickTile(title: L("资源管理器", "Explorer"), icon: "folder") {
                     WinIOSBridge.shared.sendKeyCombo(withModifiers: [NSNumber(value: 0xe3)], key: 0x08)
                 }
 
-                studioQuickTile(title: "键盘", icon: "keyboard", active: vm.systemKeyboardVisible) {
+                studioQuickTile(title: L("键盘", "Keyboard"), icon: "keyboard", active: vm.systemKeyboardVisible) {
                     vm.systemKeyboardVisible.toggle()
                 }
             }
@@ -441,7 +444,7 @@ struct SessionView: View {
                 } label: {
                     HStack(spacing: 6) {
                         WindowsLogoMark(size: 10.5, color: Color(red: 0.05, green: 0.07, blue: 0.11))
-                        Text("开始")
+                        Text(L("开始", "Start"))
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(Color(red: 0.05, green: 0.07, blue: 0.11))
                     }
@@ -451,7 +454,7 @@ struct SessionView: View {
                 }
                 .buttonStyle(.plain)
 
-                studioPillItem(icon: "laptopcomputer", label: "笔记本") {
+                studioPillItem(icon: "laptopcomputer", label: L("笔记本", "Laptop")) {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                         vm.postureMode = .laptop
                         vm.systemKeyboardVisible = false
@@ -463,7 +466,7 @@ struct SessionView: View {
                     vm.launchGuestAntigravity()
                 }
 
-                studioPillItem(icon: "paintbrush.pointed", label: "画图") {
+                studioPillItem(icon: "paintbrush.pointed", label: L("画图", "Paint")) {
                     vm.launchGuestPaint()
                 }
 
@@ -479,7 +482,7 @@ struct SessionView: View {
                     vm.toggleOAuthBrowserMode()
                 }
 
-                studioPillItem(icon: "keyboard", label: "按键", active: vm.systemKeyboardVisible) {
+                studioPillItem(icon: "keyboard", label: L("按键", "Keys"), active: vm.systemKeyboardVisible) {
                     vm.systemKeyboardVisible.toggle()
                 }
 
@@ -491,16 +494,41 @@ struct SessionView: View {
                     vm.trackpadMode.toggle()
                 }
 
-                studioPillItem(icon: "computermouse", label: "右键", active: vm.rightClickArmed) {
+                studioPillItem(icon: "computermouse", label: L("右键", "Right Click"), active: vm.rightClickArmed) {
                     vm.rightClickArmed.toggle()
                 }
 
-                studioPillItem(icon: "waveform.path.ecg", label: "任务管理器") {
+                studioPillItem(icon: "waveform.path.ecg", label: L("任务管理器", "Task Mgr")) {
                     WinIOSBridge.shared.sendKeyCombo(withModifiers: [NSNumber(value: 0xe0), NSNumber(value: 0xe1)], key: 0x29)
                 }
 
                 studioPillItem(icon: "power", label: "") {
                     WinIOSBridge.shared.pressPowerButton()
+                }
+
+                Menu {
+                    ForEach(AppLanguage.allCases) { lang in
+                        Button {
+                            loc.selection = lang
+                        } label: {
+                            if lang == loc.selection {
+                                Label(lang.label, systemImage: "checkmark")
+                            } else {
+                                Text(lang.label)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4.5) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 11.5, weight: .medium))
+                        Text(loc.selection.shortLabel)
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
+                    .foregroundStyle(Color(red: 0.92, green: 0.95, blue: 1.0))
+                    .padding(.horizontal, 10.5)
+                    .padding(.vertical, 6.5)
+                    .background(Capsule().fill(Color.white.opacity(0.07)))
                 }
 
                 studioPillItem(icon: "chevron.up", label: "") {
@@ -566,13 +594,13 @@ struct SessionView: View {
         VStack(spacing: laptopActive ? 11 : 16) {
             HStack(spacing: 9) {
                 WindowsLogoMark(size: laptopActive ? 14 : 17, color: .white)
-                Text("Surface 笔记本 Ultra")
+                Text(L("Surface 笔记本 Ultra", "Surface Laptop Ultra"))
                     .font(.system(size: laptopActive ? 13.5 : 15.5, weight: .semibold, design: .monospaced))
                     .tracking(2.0)
                     .foregroundStyle(.white)
             }
 
-            Text("设备名称 = iPhone Duo ARM64")
+            Text(L("设备名称 = iPhone Duo ARM64", "Device = iPhone Duo ARM64"))
                 .font(.system(size: 10, weight: .regular, design: .monospaced))
                 .tracking(1.4)
                 .foregroundStyle(Color(red: 0.72, green: 0.82, blue: 1.0).opacity(0.65))
@@ -593,7 +621,7 @@ struct SessionView: View {
                     Circle()
                         .fill(vm.isJITLive ? Color.white : Color.orange)
                         .frame(width: 5.5, height: 5.5)
-                    Text(vm.isJITLive ? "TXM JIT 已就绪" : vm.jitStatusText)
+                    Text(vm.isJITLive ? L("TXM JIT 已就绪", "TXM JIT ready") : vm.jitStatusText)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.80))
                 }
@@ -601,7 +629,7 @@ struct SessionView: View {
                 Text("·")
                     .foregroundStyle(.white.opacity(0.35))
 
-                Text("可用内存 \(vm.availableMemoryMB) MB")
+                Text(L("可用内存 \(vm.availableMemoryMB) MB", "Available memory \(vm.availableMemoryMB) MB"))
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.60))
             }
@@ -610,12 +638,12 @@ struct SessionView: View {
                 // 显示分辨率选择：写入 HV_RESOLUTION，由高分辨率固件在下次启动时生效
                 VStack(spacing: 6) {
                     Menu {
-                        Section("常用") {
+                        Section(L("常用", "Common")) {
                             ForEach(GuestResolution.allCases.filter(\.isRecommended)) { res in
                                 resolutionMenuItem(res)
                             }
                         }
-                        Section("更多分辨率") {
+                        Section(L("更多分辨率", "More resolutions")) {
                             ForEach(GuestResolution.allCases.filter { !$0.isRecommended }) { res in
                                 resolutionMenuItem(res)
                             }
@@ -624,7 +652,7 @@ struct SessionView: View {
                         HStack(spacing: 7) {
                             Image(systemName: "display")
                                 .font(.system(size: 11, weight: .medium))
-                            Text("显示分辨率 \(vm.resolutionPreset.displayName)")
+                            Text(L("显示分辨率", "Resolution") + " \(vm.resolutionPreset.displayName)")
                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 8.5, weight: .semibold))
@@ -636,7 +664,37 @@ struct SessionView: View {
                         .overlay(Capsule().strokeBorder(Color.white.opacity(0.20), lineWidth: 0.6))
                     }
 
-                    Text("需搭配高分辨率固件 code.fd，重启虚拟机后生效")
+                    Menu {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Button {
+                                loc.selection = lang
+                                uiHaptic.impactOccurred(intensity: 0.5)
+                            } label: {
+                                if lang == loc.selection {
+                                    Label(lang.label, systemImage: "checkmark")
+                                } else {
+                                    Text(lang.label)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 7) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 11, weight: .medium))
+                            Text(L("界面语言", "Language") + " · " + loc.selection.shortLabel)
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 8.5, weight: .semibold))
+                        }
+                        .foregroundStyle(.white.opacity(0.88))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.20), lineWidth: 0.6))
+                    }
+
+                    Text(L("需搭配高分辨率固件 code.fd，重启虚拟机后生效",
+                           "Requires high-res firmware code.fd; restart the VM to apply"))
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -649,7 +707,7 @@ struct SessionView: View {
                         Button {
                             vm.requestStikDebugJIT()
                         } label: {
-                            Text("启用 JIT")
+                            Text(L("启用 JIT", "Enable JIT"))
                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                 .tracking(1.0)
                                 .foregroundStyle(.white)
@@ -664,7 +722,7 @@ struct SessionView: View {
                     Button {
                         vm.startOrRetry()
                     } label: {
-                        Text(vm.isJITLive ? "启动 Windows 11" : "重试启动")
+                        Text(vm.isJITLive ? L("启动 Windows 11", "Boot Windows 11") : L("重试启动", "Retry Boot"))
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .tracking(1.1)
                             .foregroundStyle(Color(red: 0.04, green: 0.05, blue: 0.09))
@@ -708,7 +766,7 @@ struct SessionView: View {
             if res == vm.resolutionPreset {
                 Label(res.displayName, systemImage: "checkmark")
             } else {
-                Text(res.displayName + (res == .fhd ? "  · 推荐" : ""))
+                Text(res.displayName + (res == .fhd ? "  · " + L("推荐", "Recommended") : ""))
             }
         }
     }
